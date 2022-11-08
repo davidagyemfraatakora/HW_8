@@ -1,0 +1,281 @@
+---
+title: "505 Assignment 8"
+author: "David Agyemfra Atakora"
+date: "November 06th, 2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tinytex)
+library(rstanarm)
+library(ggplot2)
+
+candy<-read.csv("https://math.montana.edu/ahoegh/teaching/stat446/candy-data.csv", header = TRUE, sep = ",")
+```
+
+## Question 1 (from 2020 midterm)
+
+Using a candy dataset (https://math.montana.edu/ahoegh/teaching/stat446/candy-data.csv), define and fit a regression model to understand the relationship between winpercent and pricepercent, chocolate, and caramel. More insight into the data is available at https://fivethirtyeight.com/videos/the-ultimate-halloween-candy-power-ranking/.
+
+a. Write out the model and define all of the coefficients. (2 points)
+
+Model:
+
+$$winpercent = \beta_0 + \beta_1 x_{pricepercent}+ \beta_2 x_{chocolate=1}+\beta_3 x_{caramel=1} + \epsilon$$ \newline
+
+where; \newline
+$winpercent = \text{The overall win percentage}$ \newline \newline
+$\beta_0$ = Represents the predicted overall win percentage for a zero-unit price percentile when the candy doesn't both contain caramel and chocolate. \newline \newline
+$\beta_1$ = Comparing the overall win percentage of the candy with or without chocolate or caramel, but a difference of 1 point change in pricepercent, we would expect to see a difference of $\beta_1$  points in the overall win percentage. \newline \newline
+$\beta_2$ = Comparing the overall win percentage of the candy with the same pricepercent, but who differs in whether there is chocolate or caramel, the model predicts an expected difference of $\beta_2$ in the overall win percentage. \newline \newline
+$\beta_3$ = Comparing the overall win percentage of the candy with the same pricepercent, but who differs in whether there is chocolate or caramel, the model predicts an expected difference of $\beta_3$ in the overall win percentage. \newline \newline
+$x_{pricepercent}$ = The unit price percentile. \newline \newline
+$x_{chocolate=1}$ = Is an indicator function for whether the candy contains chocolate. \newline \newline
+$x_{caramel=1}$ = Is an indicator function for whether the candy contains caramel. \newline \newline
+$\epsilon \sim N(0, \: \sigma^2)$
+
+
+b. Fit the model with software of your choice and print the results. (2 points)
+
+```{r}
+set.seed(2022)
+fit<- stan_glm(winpercent ~ pricepercent + chocolate + caramel, data=candy, refresh = 0)
+print(fit)
+```
+
+c. Summarize your results from part 2, in a way that Willy Wonka could understand. (2 points)
+
+The first column shows estimates; 41.5, 1.4, 18.0 and 2.2 are the coefficients in the fitted line, $winpercent = 41.5 + 1.4 x_{pricepercent}+ 18.0 x_{chocolate=1}+ 2.2 x_{caramel=1}$. The second column displays uncertainties in the estimates using the median absolute deviations. The last output line displays the estimation and uncertainty of $\sigma$, the size of the data variation that the regression model is unable to explain.(That is; the deviation of the regression line's upper and lowermost points). 41.5 is interpreted as the average overall win percentage when there is no pricepercent and the candy has doesn't contains chocolate and caramel. 1.4 represent the mean increase of the overall win percentage for every additional one unit in price percent with no chocolate and caramel in the candy. 18.0 explains the difference between the overall win percentage for a candy with chocolate and without caramel with a zero-unit pricepercent, and candy without both chocolate and caramel with a zero-unit pricepercent. Lastly, With a zero-unit pricepercent, the 2.2 also explains the difference between a candy with caramel and no chocolate and a candy with without chocolate and caramel.
+
+
+d. Using your model from part b, create the candy with the highest win percentage. Then specify the levels of the predictors and create a predictive distribution for an individual type of candy with those features. (2 points)
+
+Coefficients of the models
+```{r}
+set.seed(505)
+coefs_fit <- coef(fit)
+coefs_fit
+```
+Maximum values for the predictors:
+```{r}
+price_percent <- max(candy$pricepercent)
+
+chocolate <- 1
+caramel <- 1
+
+price_percent
+chocolate
+caramel
+```
+
+Highest win percentage;
+```{r}
+coefs_fit[1] + coefs_fit[2]*price_percent + coefs_fit[3]*1 + coefs_fit[4]*1
+```
+
+
+a. (2 points)
+
+Consider the code below. Create a figure of x and y. What linear regression assumption does this data violate?
+
+The linear regression assumption does this data violate is the linearity assumption. This is becuase of the model having a $log(x)$ component in it. From the second figure, there is a presence of curvature as data points increases. Also, the data points are not symmetrically distributed and has a cone shape around the horizontal line in the plot of residuals versus predicted values. 
+
+
+```{r}
+n <- 100
+x <- seq(1,100, length.out = n)
+sigma <- 1
+beta <- c(1, 1)
+x_star <- log(x)
+y <- rnorm(n, beta[1] + beta[2] * x_star, sd = sigma)
+combined <- tibble(y = y, x = x)
+
+plot(combined, main="Figure of x and y (Scatter plot)")
+
+figure<-ggplot(combined, aes(y = y, x = x)) +
+  geom_point()+
+  geom_smooth(method = 'loess', formula = 'y~x') +
+  labs(title="Figure of x and y",
+      y="x", x="x",
+      caption="Figure of x and y")+
+  theme_minimal()
+figure
+
+#Testing the assumptions
+lm1 <- lm(y~x, data = combined)
+summary(lm1)
+#library(devtools)
+#devtools::install_github("goodekat/ggResidpanel")
+library(ggResidpanel)
+resid_panel(lm1, plots = 'all', smoother = T, qqbands = T)
+```
+
+
+
+b. (4 points)
+
+How well does a linear regression model (y ~ x) recover the point estimates of beta? Justify your answer by using several (~1000) replications of simulated data.
+
+We can make our model linear by; \newline
+1. Finding the log (x). \newline
+2. Increasing the number of simulation (~1000). \newline
+3. Investigating the betas. \newline
+
+We can observe from the table (At investigating the betas) as the sample size increases, the coefficients of the new linear models approximate to the beta in the initial model.
+
+\newpage
+## When n = 1000
+```{r}
+set.seed(2000)
+
+n <- 1000
+x <- seq(1,1000, length.out = n)
+sigma <- 1
+beta <- c(1, 1)
+x_star <- log(x)
+y <- rnorm(n, beta[1] + beta[2] * x_star, sd = sigma)
+combined <- tibble(y = y, x = log(x))
+
+lm2 <- lm(y~x, data = combined)
+summary(lm2)
+
+beta_0_2 <- coef(lm2)[1] #beta_0 for model 2
+beta_1_2 <- coef(lm2)[2] #beta_1 for model 2
+
+beta_0_2
+beta_1_2
+```
+
+\newpage
+## When n = 10000
+```{r}
+set.seed(2001)
+
+n <- 10000
+x <- seq(1,10000, length.out = n)
+sigma <- 1
+beta <- c(1, 1)
+x_star <- log(x)
+y <- rnorm(n, beta[1] + beta[2] * x_star, sd = sigma)
+combined <- tibble(y = y, x = log(x))
+
+lm3 <- lm(y~x, data = combined)
+summary(lm3)
+
+beta_0_3 <- coef(lm3)[1] #beta_0 for model 3
+beta_1_3 <- coef(lm3)[2] #beta_1 for model 3
+
+beta_0_3
+beta_1_3
+```
+\newpage
+### 3. Investigating the Betas
+```{r}
+df <- data.frame(Beta=c('Intercept (Beta_0)', 'Intercept (Beta_0)'),
+                 n_1000=c('0.98801', '1.01116'),
+                 n_10000=c('1.01119', '0.99837'))
+df
+```
+
+We can observe from the table (At investigating the betas) as the sample size increases, the coefficients of the new linear models approximate to the beta in the initial model.
+
+
+\newpage
+c. (4 points)
+
+How well does a linear regression model capture the uncertainty in a predictions for y conditional on
+
+* x = 1 
+* x = 50
+* x = 100
+
+## When x = 1
+
+```{r}
+set.seed(1001)
+n <- 100
+x <- seq(1,100, length.out = n)
+sigma <- 1
+beta <- c(1, 1)
+x_star <- log(x)
+y <- rnorm(n, beta[1] + beta[2] * x_star, sd = sigma)
+combined <- tibble(y = y, x = x)
+lm4 <- stan_glm( y ~ x, data = combined, refresh = 0)
+
+new_model <- data.frame(x=1)
+y_pred <- posterior_linpred(lm4, newdata = new_model) %>% quantile(prob = c(0.25,0.975))
+y_pred
+
+tab<-as.matrix(y_pred)
+y <- rnorm(n, beta[1] + beta[2] * log(1), sd = sigma) # set 1 in log(x)
+z <-(which(y <= tab[2,]))
+q <-which(y >= tab[1,])
+prediction_1<-length(which(z %in% q))/n
+
+prediction_1
+```
+
+## When x = 50
+
+```{r}
+set.seed(1002)
+n <- 100
+x <- seq(1,100, length.out = n)
+sigma <- 1
+beta <- c(1, 1)
+x_star <- log(x)
+y <- rnorm(n, beta[1] + beta[2] * x_star, sd = sigma)
+combined <- tibble(y = y, x = x)
+lm4 <- stan_glm( y ~ x, data = combined, refresh = 0)
+
+new_model <- data.frame(x=50)
+y_pred <- posterior_linpred(lm4, newdata = new_model) %>% quantile(prob = c(0.25,0.975))
+y_pred
+
+tab<-as.matrix(y_pred)
+y <- rnorm(n, beta[1] + beta[2] * log(50), sd = sigma) # set 1 in log(x)
+z <-(which(y <= tab[2,]))
+q <-which(y >= tab[1,])
+prediction_1<-length(which(z %in% q))/n
+
+prediction_1
+```
+
+## When x = 100
+
+```{r}
+set.seed(1003)
+n <- 100
+x <- seq(1,100, length.out = n)
+sigma <- 1
+beta <- c(1, 1)
+x_star <- log(x)
+y <- rnorm(n, beta[1] + beta[2] * x_star, sd = sigma)
+combined <- tibble(y = y, x = x)
+lm4 <- stan_glm( y ~ x, data = combined, refresh = 0)
+
+new_model <- data.frame(x=100)
+y_pred <- posterior_linpred(lm4, newdata = new_model) %>% quantile(prob = c(0.25,0.975))
+y_pred
+
+tab<-as.matrix(y_pred)
+y <- rnorm(n, beta[1] + beta[2] * log(100), sd = sigma) # set 1 in log(x)
+z <-(which(y <= tab[2,]))
+q <-which(y >= tab[1,])
+prediction_1<-length(which(z %in% q))/n
+
+prediction_1
+```
+
+```{r}
+df <- data.frame(x=c('Percentage'),
+                 x_1=c('0.02'),
+                 x_50=c('0.07'),
+                 x_100=c('0.22'))
+df
+```
+
+As x increases, more percentage of points are captured in the interval. The interval is provided by the posterior_linpred function but the model still doesn't predict well. 
+
